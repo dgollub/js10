@@ -1,0 +1,46 @@
+/**
+ * Common styles for all implementations are defined in here.
+ * If you want to use different styles, or use a pre-processer, feel free to do so.
+ *
+ */
+
+
+#header {
+    position: relative;
+    width: 100%;    
+    margin: 20px;
+}
+
+#footer {
+    position: relative;
+    width: 100%;
+    margin: 20px;
+}
+
+#body {
+    position: relative;
+    width: 100%;
+    margin: 20px;
+}
+
+#board {
+	margin: 0 auto;
+	width: 90%;
+	position: relative;
+}
+
+.tile {
+	border: 1px solid green;
+	margin: 3px;
+	float: left;
+	position: relative;
+	text-align: center;
+}
+
+.tile span {
+	width: 100%;
+	height: 100%;
+	text-align: center;
+	position: relative;
+	top: 45%;
+}

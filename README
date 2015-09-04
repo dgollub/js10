@@ -1,0 +1,8 @@
+README
+======
+
+js10 - A game about combining tiles/cells of similiar numbers into the next higher number.
+
+I first came across this in an iPad game called "10" (or so, forgot), and it was quite addictive. It also had a pretty nice looking, yet simple UI, which I liked. Here I try to just implement the general gameplay in a variety of compile-to-JavaScript languages and frameworks. Or so.
+
+Copyright © 2015 Daniel Kurashige-Gollub, daniel@kurashige-gollub.de
