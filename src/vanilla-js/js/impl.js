@@ -282,24 +282,35 @@ function handleTileClick(ev) {
 	}, 1500);
 }
 
+// Returns an array with indices of the neighbours for the given index if they
+// share the same number value.
+function getNeighbours(idx, num) {
+	// Remember: tiles across rows are not connected at the beginning/end of rows,
+	// ie row 2, colum 0 is not connected to row 1, column WIDTH-1, even when they
+	// share the same number.
+	var neigh = [],
+		top = getTileFromBoard(idx - WIDTH),
+		bottom = getTileFromBoard(idx + WIDTH),
+		left = getTileFromBoard(idx - 1),
+		right = getTileFromBoard(idx + 1),
+		noLeft = idx % WIDTH === 0, // left side check; only need to check for top, bottom and right neighbour
+		noRight = (idx+1) % WIDTH === 0; // right side check; only need to check for top, bottom and left neighbour
+
+	if (!noLeft && left !== null && left.num === num)
+		neigh.push(left.idx);
+	if (!noRight && right !== null && right.num === num)
+		neigh.push(right.idx);
+	if (top !== null && top.num === num)
+		neigh.push(top.idx);
+	if (bottom !== null && bottom.num === num) 
+		neigh.push(bottom.idx);
+
+	return neigh;
+}
+
 function checkForNeighbours(tile) {
-	
-	//top neighbour: current idx - number of tiles per row
-	//bottom neighbour: current idx + number of tiles per row
-	//left neighbour: current idx - 1, BUT make sure it's on the same row
-	//right neighbour: current idx + 1, BUT make sure it's on the same row
-
-	var top = getTileFromBoard(tile.idx - WIDTH),
-		bottom = getTileFromBoard(tile.idx + WIDTH),
-		left = getTileFromBoard(tile.idx - 1),
-		right = getTileFromBoard(tile.idx + 1);
-
-	if (top && top.num == tile.num) return true;
-	if (bottom && bottom.num == tile.num) return true;
-	if (left && left.idx % WIDTH != 0 && left.num == tile.num) return true;
-	if (right && right.idx % WIDTH != (WIDTH - 1) && right.num == tile.num) return true;
-
-	return false;
+	var neighbours = getNeighbours(tile.idx, tile.num);
+	return neighbours.length > 0;
 }
 
 function gatherConnectedTiles(tile) {
@@ -307,33 +318,6 @@ function gatherConnectedTiles(tile) {
 	// A list of array indices that are connected to the tile
 	// and furthermore to other tiles with the same value/number.
 	var connected = [];	
-
-	// Remember: tiles across rows are not connected at the beginning/end of rows,
-	// ie row 2, colum 0 is not connected to row 1, column WIDTH-1, even when they
-	// share the same number.
-
-	// Returns an array with indices of the neighbours for the given index if they
-	// share the same number value.
-	function getNeighbours(idx, num) {
-		var neigh = [],
-			top = getTileFromBoard(idx - WIDTH),
-			bottom = getTileFromBoard(idx + WIDTH),
-			left = getTileFromBoard(idx - 1),
-			right = getTileFromBoard(idx + 1),
-			noLeft = tile.idx % WIDTH === 0, // left side check; only need to check for top, bottom and right neighbour
-			noRight = tile.idx+1 % WIDTH === 0; // right side check; only need to check for top, bottom and left neighbour
-
-		if (!noLeft && left !== null && left.num === num)
-			neigh.push(left.idx);
-		if (!noRight && right !== null && right.num === num)
-			neigh.push(right.idx);
-		if (top !== null && top.num === num)
-			neigh.push(top.idx);
-		if (bottom !== null && bottom.num === num) 
-			neigh.push(bottom.idx);
-
-		return neigh;
-	}
 
 	// Searches through all neighbours to find all connected tiles.
 	function crawl(root, num, crawled) {
@@ -352,7 +336,6 @@ function gatherConnectedTiles(tile) {
 	}
 
 	crawl(tile.idx, tile.num, connected);
-	console.log("connected", connected);
 	
 	return map(connected, function(tileIdx) { return getTileFromBoard(tileIdx) });
 
