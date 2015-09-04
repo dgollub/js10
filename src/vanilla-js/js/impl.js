@@ -68,24 +68,6 @@ function addEvent(element, event, cb) {
 	}
 }
 
-// function getCSSStyleValue(element, cssRule){
-//     var styleValue = "";
-
-//     if (doc.defaultView && doc.defaultView.getComputedStyle) {
-
-//         styleValue = doc.defaultView.getComputedStyle(element, null).getPropertyValue(cssRule);
-
-//     } else if (element.currentStyle){
-
-//         cssRule = cssRule.replace(/\-(\w)/g, function(match, firstMatch){
-//             return firstMatch.toUpperCase();
-//         });
-//         styleValue = element.currentStyle[cssRule];
-
-//     }
-//     return styleValue;
-// }
-
 // http://stackoverflow.com/a/12043228/193165
 function isDarkColor(color) {
 	var c = color.length === 6 ? color : color.substring(1); // strip #
@@ -225,7 +207,7 @@ function replaceStyles(style, newStyles) {
 }
 
 function animateTile(tile, newStyle, duration, cb) {
-	console.log("animateTile");
+	// console.log("animateTile");
 
 	var dur = parseFloat(duration, 10) || 400,
 		style = replaceStyles(tile.element.getAttribute("style"), newStyle);
@@ -266,7 +248,7 @@ function handleTileClick(ev) {
 	});
 
 	// change number
-	if (tile.num == 10) { // TOOD(dkg): not sure what to do in this case - restart from 1?
+	if (tile.num == 10) { // TOOD(dkg): not sure what to do in this case - restart from 1? Or keep counting up?
 		return;
 	}
 
@@ -277,9 +259,45 @@ function handleTileClick(ev) {
 		});
 	});
 
-	setTimeout(function(){
-		draw();	
-	}, 1500);
+	// setTimeout(function(){
+	// 	draw();	
+	// }, 1500);
+
+	// Collapse tiles into one and advance the number.
+	collapseTiles(tile, connectedTiles);
+}
+
+// Collapse tiles into one and advance the number.
+// Collapse into the tile that was clicked on, however, do apply "gravity", ie
+// fall down if there are connected tiles below and collapse further down until
+// either the border is reached or no more connected tiles are below.
+function collapseTiles(tile, connectedTiles) {
+	// NOTE(dkg): Two possible animation ideas for this.
+	// 1. Follow the tiles tail and collapse one into another until
+	//    all connected tiles reach the clicked-on-tile.
+	//    Exception: tiles below the clicked-on-tile, leave those in 
+	//    place and move the clicked-on one further down instead.
+	// 2. Fly each connected tile directly over the screen onto the 
+	//    clicked on tile, while it falls down into place.
+	//
+	// I think I will go with #2 for now. But first, I'll implement the general
+	// logic so things just work and then I'll animate this.
+	//
+
+	//  1. Determine the connected tiles below this tile so we can fall it down.
+	//  2. Fall down.
+	//  3. Let all other tiles pile onto the most bottom tile.
+	//  4. Increase number on final tile.
+	//  5. Let all other tiles fall down that now may hang in the air.
+	//  6. Fill the void from above with random numbered tiles (1 - current max. 
+	//     number of any given tile).
+	//  7. Award points.
+	//  8. Update high score.
+	//  9. Figure out if more moves are possible. If not, game over.
+	// 10. Enjoy life.
+
+	
+
 }
 
 // Returns an array with indices of the neighbours for the given index if they

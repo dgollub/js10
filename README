@@ -5,4 +5,8 @@ js10 - A game about combining tiles/cells of similiar numbers into the next high
 
 I first came across this in an iPad game called "10" (or so, forgot), and it was quite addictive. It also had a pretty nice looking, yet simple UI, which I liked. Here I try to just implement the general gameplay in a variety of compile-to-JavaScript languages and frameworks. Or so.
 
+
+And yeah, I used tabs. I honestly don't care much about spaces vs tabs, just be consistent. Or not. I am not the police, and this is just a README file.
+
+
 Copyright © 2015 Daniel Kurashige-Gollub, daniel@kurashige-gollub.de
