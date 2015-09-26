@@ -45,7 +45,25 @@ python -m SimpleHTTPServer 9999 &
 
 PID=$!
 
-open "http://localhost:9999/"
+
+case "$(uname -s)" in
+
+   Darwin)
+     open "http://localhost:9999/"
+     ;;
+
+   Linux)
+     open "http://localhost:9999/"
+     ;;
+
+   CYGWIN*|MINGW32*|MSYS*)
+     explorer.exe "http://localhost:9999/"
+     ;;
+
+   *)
+     echo 'other OS (or missing cases for above OSs)' 
+     ;;
+esac
 
 echo -e "Local Python Webserver running on port 9999 with pid ${PID}."
 echo -e "You should see the example page in your browser on http://localhost:9999/"
