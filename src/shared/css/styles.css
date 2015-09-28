@@ -31,9 +31,8 @@
 
 .tile {
 	border: 1px solid green;
-	margin: 3px;
-	float: left;
-	position: relative;
+	position: absolute;
+	display: inline-block;
 	text-align: center;
 }
 

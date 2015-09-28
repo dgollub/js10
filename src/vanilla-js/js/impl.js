@@ -394,15 +394,22 @@ function draw() {
 	function createDiv(tile, idx) {
 		var tw = ts.width + "px", 
 			th = ts.height + "px",
-			br = (idx+1) % WIDTH == 0,
+			row = Math.floor(idx / WIDTH),
+			column = idx % WIDTH,
+			br = (idx + 1) % WIDTH == 0, // check if row ended
 			color = ""+tileColors[tile-1],
 			bgColor =";background-color:#" + color,
-			textColor = isDarkColor(color) ? ";color:white" : ";color:black" ;
+			textColor = isDarkColor(color) ? ";color:white" : ";color:black",
+			padding = 0,
+			left = (padding + ts.width) * column,
+			top = ts.height * row,
+			leftpx = left + "px",
+			toppx = top + "px";
 
 			if (typeof color == "object")
 				debugger;
 
-		return  '<div class="tile" id="tile-'+idx+'" data-idx="'+idx+'" data-number="'+tile+'" style="width:'+tw+';height:'+th+bgColor+textColor+'"><span>'+tile+'</span></div>' +
+		return  '<div class="tile" id="tile-'+idx+'" data-idx="'+idx+'" data-number="'+tile+'" style="width:'+tw+';height:'+th+bgColor+textColor+';left:'+leftpx+';top:'+toppx+';"><span>'+tile+'</span></div>' +
 				(br ? '<br style="clear:both" />' : "");
 	}
 
@@ -413,6 +420,9 @@ function draw() {
 	each(doc.querySelectorAll(".tile"), function(tile) {
 		addEvent(tile, "click", handleTileClick);
 	});
+	
+	var totalHeight = HEIGHT * ts.height;
+	domBoard.setAttribute("style", "height:"+(totalHeight+20)+"px");
 }
 
 function clearBoard() {
