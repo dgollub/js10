@@ -271,21 +271,24 @@ function handleTileClick(ev) {
 // Collapse into the tile that was clicked on, however, do apply "gravity", ie
 // fall down if there are connected tiles below and collapse further down until
 // either the border is reached or no more connected tiles are below.
-function collapseTiles(tile, connectedTiles) {
+function collapseTiles(clickedOnTile, connectedTiles) {
 	// NOTE(dkg): Two possible animation ideas for this.
 	// 1. Follow the tiles tail and collapse one into another until
 	//    all connected tiles reach the clicked-on-tile.
 	//    Exception: tiles below the clicked-on-tile, leave those in 
 	//    place and move the clicked-on one further down instead.
 	// 2. Fly each connected tile directly over the screen onto the 
-	//    clicked on tile, while it falls down into place.
+	//    clicked on tile, while it falls down into place. This is the 
+	//    actual game behavior of the original game.
 	//
 	// I think I will go with #2 for now. But first, I'll implement the general
 	// logic so things just work and then I'll animate this.
 	//
 
 	//  1. Determine the connected tiles below this tile so we can fall it down.
-	//  2. Fall down.
+	//  2. Fall down. 
+	//  Actually, in the original game, this happens last.
+	
 	//  3. Let all other tiles pile onto the most bottom tile.
 	//  4. Increase number on final tile.
 	//  5. Let all other tiles fall down that now may hang in the air.
@@ -296,9 +299,33 @@ function collapseTiles(tile, connectedTiles) {
 	//  9. Figure out if more moves are possible. If not, game over.
 	// 10. Enjoy life.
 
+	var clickedElement = clickedOnTile.element;
 	
+	each(connectedTiles, function(tile) {
+		var element = tile.element;
+		var opts = {
+			"top": clickedElement.offsetTop+"px",
+			"left": clickedElement.offsetLeft+"px",
+			"position": "absolute"
+		};
+		animate(element, opts);
+	});
 
+	// apply gravity now
+	
+	// drop new tiles and let the player click again
+	
 }
+
+function animate(element, options) {
+	
+	// console.log("animate", element, options);
+	for (var key in options) {
+		var val = options[key];
+		element.style[key] = val;
+	}
+}
+
 
 // Returns an array with indices of the neighbours for the given index if they
 // share the same number value.
@@ -347,7 +374,7 @@ function gatherConnectedTiles(tile) {
 		
 		for (var i = 0; i<counted; i++) {
 			var tileIdx = foundNeighbours[i];
-			if (crawled.indexOf(tileIdx) === -1) {				
+			if (crawled.indexOf(tileIdx) === -1) {
 				crawl(tileIdx, num, crawled);
 			}
 		}
@@ -360,6 +387,7 @@ function gatherConnectedTiles(tile) {
 }
 
 function draw() {
+	console.log("draw");
 	// create the DIV elements if they don't exist yet
 	var ts = getTileSize();
 
