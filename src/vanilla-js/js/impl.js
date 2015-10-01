@@ -243,19 +243,30 @@ function handleTileClick(ev) {
 		return;
 	}
 
-	animateTile(tile, "background-color:lime", 500, function() {
-		animateTile(tile, "background-color:#"+tileColors[tile.num-1], 200)
-	});
+	// animateTile(tile, "background-color:lime", 500, function() {
+		// animateTile(tile, "background-color:#"+tileColors[tile.num-1], 200)
+	// });
 
 	// change number
 	if (tile.num == 10) { // TOOD(dkg): not sure what to do in this case - restart from 1? Or keep counting up?
 		return;
 	}
 
-	var connectedTiles = gatherConnectedTiles(tile);
+	var connectedTiles = gatherConnectedTiles(tile),
+		count = connectedTiles.length;
 	each(connectedTiles, function(connected, idx){
-		animateTile(connected, "background-color:lime", 500, function() {
-			animateTile(connected, "background-color:#"+tileColors[connected.num-1], 200)
+		animateTile(connected, "background-color:lime", 150, function() {
+			animateTile(connected, "background-color:#"+tileColors[connected.num-1], 150, function(){
+				// TODO(dkg): fix this
+				// This doesn't guarantee that collapseTile function will run
+				// only AFTER ALL animations are done. Why? Because the animateTile
+				// calls are all async (setTimeout) and could be executed in arbritrary 
+				// order.
+				if (idx == count-1) {
+					// Collapse tiles into one and advance the number.
+					collapseTiles(tile, connectedTiles);
+				}
+			})
 		});
 	});
 
@@ -263,8 +274,8 @@ function handleTileClick(ev) {
 	// 	draw();	
 	// }, 1500);
 
-	// Collapse tiles into one and advance the number.
-	collapseTiles(tile, connectedTiles);
+	//// Collapse tiles into one and advance the number.
+	// collapseTiles(tile, connectedTiles);
 }
 
 // Collapse tiles into one and advance the number.
@@ -272,6 +283,7 @@ function handleTileClick(ev) {
 // fall down if there are connected tiles below and collapse further down until
 // either the border is reached or no more connected tiles are below.
 function collapseTiles(clickedOnTile, connectedTiles) {
+	console.log("collapseTiles", clickedOnTile);
 	// NOTE(dkg): Two possible animation ideas for this.
 	// 1. Follow the tiles tail and collapse one into another until
 	//    all connected tiles reach the clicked-on-tile.
@@ -303,11 +315,20 @@ function collapseTiles(clickedOnTile, connectedTiles) {
 	
 	each(connectedTiles, function(tile) {
 		var element = tile.element;
+		if (clickedElement.id == element.id)
+			return;
 		var opts = {
+			// TODO(dkg): fix this
+			// offsetTop and offsetLeft are rounded to the nearest int, which gives us
+			// some off-by-1/2-pixel look in same cases
 			"top": clickedElement.offsetTop+"px",
 			"left": clickedElement.offsetLeft+"px",
 			"position": "absolute"
 		};
+		// right now no real animations happen
+		// if we want to change this, we need to make it work async
+		// with setTimeout or something, in which case we need to
+		// have a callback run after the last element was animated
 		animate(element, opts);
 	});
 
@@ -318,7 +339,6 @@ function collapseTiles(clickedOnTile, connectedTiles) {
 }
 
 function animate(element, options) {
-	
 	// console.log("animate", element, options);
 	for (var key in options) {
 		var val = options[key];
@@ -345,8 +365,7 @@ function getNeighbours(idx, num) {
 		neigh.push(left.idx);
 	if (!noRight && right !== null && right.num === num)
 		neigh.push(right.idx);
-	if (top !== null && top.num === num)
-		neigh.push(top.idx);
+	if (top !== null && top.num === num)		neigh.push(top.idx);
 	if (bottom !== null && bottom.num === num) 
 		neigh.push(bottom.idx);
 
@@ -408,7 +427,7 @@ function draw() {
 
 			if (typeof color == "object")
 				debugger;
-
+		// TODO(dkg): maybe encode the properties like color and position in data attributes as well?
 		return  '<div class="tile" id="tile-'+idx+'" data-idx="'+idx+'" data-number="'+tile+'" style="width:'+tw+';height:'+th+bgColor+textColor+';left:'+leftpx+';top:'+toppx+';"><span>'+tile+'</span></div>' +
 				(br ? '<br style="clear:both" />' : "");
 	}
