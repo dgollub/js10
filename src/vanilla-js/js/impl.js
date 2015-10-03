@@ -159,6 +159,14 @@ function getTileSize() {
 
 // game play
 
+// TODO(dkg): use this Tile object instead of the custom dict
+// TODO(dkg): actually have to do this next!!!!
+// function Tile(index, number, element) {
+	// this.idx = index;
+	// this.number = number;
+	// this.element = element;
+// }
+
 function getTileFromEvent(ev) {
 	return ev.target.tagName == "SPAN" ? getTileFromElement(ev.target.parentNode) 
 									   : getTileFromElement(ev.target)
@@ -170,6 +178,9 @@ function getTileFromElement(element) {
 		num: parseInt(element.getAttribute("data-number"), 10),
 		element: element
 	};
+	// return new Tile(parseInt(element.getAttribute("data-idx"), 10),
+					// parseInt(element.getAttribute("data-number"), 10),
+					// element);
 }
 
 function getTileFromBoard(idx) {
@@ -262,7 +273,7 @@ function handleTileClick(ev) {
 				// only AFTER ALL animations are done. Why? Because the animateTile
 				// calls are all async (setTimeout) and could be executed in arbritrary 
 				// order.
-				if (idx == count-1) {
+				if (--count == 0) { // this should be correct even with out of order execution
 					// Collapse tiles into one and advance the number.
 					collapseTiles(tile, connectedTiles);
 				}
@@ -330,7 +341,14 @@ function collapseTiles(clickedOnTile, connectedTiles) {
 		// with setTimeout or something, in which case we need to
 		// have a callback run after the last element was animated
 		animate(element, opts);
+		// remove tile from the board - mark tile as "removable" so it will be removed from our storage
+		tile.remove = true;
 	});
+	
+	// increase value of clicked element
+	clickedOnTile.num++;
+	clickedElement.attributes["data-number"] = clickedOnTile.num;
+	clickedElement.children[0].innerHTML = clickedOnTile.num;
 
 	// apply gravity now
 	
@@ -344,6 +362,7 @@ function animate(element, options) {
 		var val = options[key];
 		element.style[key] = val;
 	}
+	element.attributes["style"] = "display:none;";
 }
 
 
@@ -365,7 +384,8 @@ function getNeighbours(idx, num) {
 		neigh.push(left.idx);
 	if (!noRight && right !== null && right.num === num)
 		neigh.push(right.idx);
-	if (top !== null && top.num === num)		neigh.push(top.idx);
+	if (top !== null && top.num === num)
+		neigh.push(top.idx);
 	if (bottom !== null && bottom.num === num) 
 		neigh.push(bottom.idx);
 
@@ -485,6 +505,7 @@ function setupBoard() {
 
 	// TODO(dkg): the initial board should have more 1s and 2s than 3s!
 	// TODO(dkg): make sure the board is playable!
+	// TODO(dkg): use the Tile() object here!
 	board = createList(NUMBER_OF_TILES, function(idx) { return randomInteger(3); });
 }
 
