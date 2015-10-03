@@ -56,6 +56,39 @@ var body = doc.getElementById("body"),
 	NUMBER_OF_TILES = WIDTH * HEIGHT;
 
 
+function Tile(index, number, element) {
+	this.idx = index;
+	this.number = number;
+	this.element = element || null;
+	this.collapsed = false;
+}
+Tile.prototype.draw = function(tileSize) {
+	var ts = tileSize;
+	function createDiv(num, idx) {
+		var tw = ts.width + "px", 
+			th = ts.height + "px",
+			row = Math.floor(idx / WIDTH),
+			column = idx % WIDTH,
+			br = (idx + 1) % WIDTH == 0, // check if row ended
+			color = ""+tileColors[num-1],
+			bgColor =";background-color:#" + color,
+			textColor = isDarkColor(color) ? ";color:white" : ";color:black",
+			padding = 0,
+			left = (padding + ts.width) * column,
+			top = ts.height * row,
+			leftpx = left + "px",
+			toppx = top + "px";
+
+			if (typeof color == "object")
+				debugger;
+		// TODO(dkg): maybe encode the properties like color and position in data attributes as well?
+		var div = '<div class="tile" id="tile-'+idx+'" data-idx="'+idx+'" data-number="'+num+'" style="width:'+tw+';height:'+th+bgColor+textColor+';left:'+leftpx+';top:'+toppx+';"><span>'+num+'</span></div>' +
+				(br ? '<br style="clear:both" />' : "");
+		return div;
+	}
+	return createDiv(this.number, this.idx);
+}
+
 // utils
 
 function addEvent(element, event, cb) {
@@ -90,23 +123,26 @@ function randomInteger(max) {
 }
 
 function each(list, cb) {
-	for (var i = 0; i < list.length; i++) {
+	var length = list.length;
+	for (var i = 0; i < length; i++) {
 		cb(list[i], i);
 	}
 	return list;
 }
 
 function map(list, cb) {
-	var newList = []
-	for (var i = 0; i < list.length; i++) {
+	var newList = [],
+		length = list.length;
+	for (var i = 0; i < length; i++) {
 		newList.push(cb(list[i], i));
 	}
 	return newList;
 }
 
 function filter(list, pre, trans) {
-	var newList = []
-	for (var i = 0; i < list.length; i++) {
+	var newList = [],
+		length = list.length;
+	for (var i = 0; i < length; i++) {
 		if (pre(list[i], i)) {
 			if (typeof trans === "function") {
 				newList.push(trans(list[i], i));
@@ -116,6 +152,18 @@ function filter(list, pre, trans) {
 		}
 	}
 	return newList;
+}
+
+function find(list, pre) {
+	var item = null,
+		length = list.length;
+	for (var i = 0; i < length; i++) {
+		if (pre(list[i], i)) {
+			item = list[i];
+			break;
+		}
+	}
+	return item;
 }
 
 function createList(length, cb) {
@@ -159,35 +207,24 @@ function getTileSize() {
 
 // game play
 
-// TODO(dkg): use this Tile object instead of the custom dict
-// TODO(dkg): actually have to do this next!!!!
-// function Tile(index, number, element) {
-	// this.idx = index;
-	// this.number = number;
-	// this.element = element;
-// }
-
 function getTileFromEvent(ev) {
 	return ev.target.tagName == "SPAN" ? getTileFromElement(ev.target.parentNode) 
 									   : getTileFromElement(ev.target)
 }
 
 function getTileFromElement(element) {
-	return {
-		idx: parseInt(element.getAttribute("data-idx"), 10),
-		num: parseInt(element.getAttribute("data-number"), 10),
-		element: element
-	};
-	// return new Tile(parseInt(element.getAttribute("data-idx"), 10),
-					// parseInt(element.getAttribute("data-number"), 10),
-					// element);
+	var idx = parseInt(element.getAttribute("data-idx"), 10) || -1;
+	if (idx === -1) {
+		console.error("No such tile for element. Or element is not a tile.", element);
+		return null;
+	}
+	return find(board, function(tile) { return tile.idx === idx; });
 }
 
 function getTileFromBoard(idx) {
 	if (idx >= board.length) return null;
 	if (idx < 0) return null;
-	// return board[idx];
-	return getTileFromElement(doc.getElementById("tile-"+idx));
+	return find(board, function(tile) { return tile.idx == idx; });
 }
 
 function replaceStylesPart(style, part, newStyle) {
@@ -237,7 +274,7 @@ function handleTileClick(ev) {
 	ev.preventDefault();
 	var tile = getTileFromEvent(ev);
 
-	console.log("clicked on tile ", tile.idx, tile.num);
+	console.log("clicked on tile ", tile);
 
 	// check if tile has neighbour(s) with same number
 	// if no, bail
@@ -254,10 +291,6 @@ function handleTileClick(ev) {
 		return;
 	}
 
-	// animateTile(tile, "background-color:lime", 500, function() {
-		// animateTile(tile, "background-color:#"+tileColors[tile.num-1], 200)
-	// });
-
 	// change number
 	if (tile.num == 10) { // TOOD(dkg): not sure what to do in this case - restart from 1? Or keep counting up?
 		return;
@@ -268,11 +301,6 @@ function handleTileClick(ev) {
 	each(connectedTiles, function(connected, idx){
 		animateTile(connected, "background-color:lime", 150, function() {
 			animateTile(connected, "background-color:#"+tileColors[connected.num-1], 150, function(){
-				// TODO(dkg): fix this
-				// This doesn't guarantee that collapseTile function will run
-				// only AFTER ALL animations are done. Why? Because the animateTile
-				// calls are all async (setTimeout) and could be executed in arbritrary 
-				// order.
 				if (--count == 0) { // this should be correct even with out of order execution
 					// Collapse tiles into one and advance the number.
 					collapseTiles(tile, connectedTiles);
@@ -280,13 +308,6 @@ function handleTileClick(ev) {
 			})
 		});
 	});
-
-	// setTimeout(function(){
-	// 	draw();	
-	// }, 1500);
-
-	//// Collapse tiles into one and advance the number.
-	// collapseTiles(tile, connectedTiles);
 }
 
 // Collapse tiles into one and advance the number.
@@ -311,7 +332,7 @@ function collapseTiles(clickedOnTile, connectedTiles) {
 	//  1. Determine the connected tiles below this tile so we can fall it down.
 	//  2. Fall down. 
 	//  Actually, in the original game, this happens last.
-	
+
 	//  3. Let all other tiles pile onto the most bottom tile.
 	//  4. Increase number on final tile.
 	//  5. Let all other tiles fall down that now may hang in the air.
@@ -323,7 +344,7 @@ function collapseTiles(clickedOnTile, connectedTiles) {
 	// 10. Enjoy life.
 
 	var clickedElement = clickedOnTile.element;
-	
+
 	each(connectedTiles, function(tile) {
 		var element = tile.element;
 		if (clickedElement.id == element.id)
@@ -342,13 +363,13 @@ function collapseTiles(clickedOnTile, connectedTiles) {
 		// have a callback run after the last element was animated
 		animate(element, opts);
 		// remove tile from the board - mark tile as "removable" so it will be removed from our storage
-		tile.remove = true;
+		tile.collapsed = true;
 	});
-	
+
 	// increase value of clicked element
-	clickedOnTile.num++;
-	clickedElement.attributes["data-number"] = clickedOnTile.num;
-	clickedElement.children[0].innerHTML = clickedOnTile.num;
+	clickedOnTile.number++;
+	clickedElement.attributes["data-number"] = clickedOnTile.number;
+	clickedElement.children[0].innerHTML = clickedOnTile.number;
 
 	// apply gravity now
 	
@@ -368,32 +389,32 @@ function animate(element, options) {
 
 // Returns an array with indices of the neighbours for the given index if they
 // share the same number value.
-function getNeighbours(idx, num) {
+function getNeighbours(tile) {
 	// Remember: tiles across rows are not connected at the beginning/end of rows,
 	// ie row 2, colum 0 is not connected to row 1, column WIDTH-1, even when they
 	// share the same number.
 	var neigh = [],
-		top = getTileFromBoard(idx - WIDTH),
-		bottom = getTileFromBoard(idx + WIDTH),
-		left = getTileFromBoard(idx - 1),
-		right = getTileFromBoard(idx + 1),
-		noLeft = idx % WIDTH === 0, // left side check; only need to check for top, bottom and right neighbour
-		noRight = (idx+1) % WIDTH === 0; // right side check; only need to check for top, bottom and left neighbour
+		top = getTileFromBoard(tile.idx - WIDTH),
+		bottom = getTileFromBoard(tile.idx + WIDTH),
+		left = getTileFromBoard(tile.idx - 1),
+		right = getTileFromBoard(tile.idx + 1),
+		noLeft = tile.idx % WIDTH === 0, // left side check; only need to check for top, bottom and right neighbour
+		noRight = (tile.idx+1) % WIDTH === 0; // right side check; only need to check for top, bottom and left neighbour
 
-	if (!noLeft && left !== null && left.num === num)
+	if (!noLeft && left !== null && left.number === tile.number)
 		neigh.push(left.idx);
-	if (!noRight && right !== null && right.num === num)
+	if (!noRight && right !== null && right.number === tile.number)
 		neigh.push(right.idx);
-	if (top !== null && top.num === num)
+	if (top !== null && top.number === tile.number)
 		neigh.push(top.idx);
-	if (bottom !== null && bottom.num === num) 
+	if (bottom !== null && bottom.number === tile.number)
 		neigh.push(bottom.idx);
 
 	return neigh;
 }
 
 function checkForNeighbours(tile) {
-	var neighbours = getNeighbours(tile.idx, tile.num);
+	var neighbours = getNeighbours(tile);
 	return neighbours.length > 0;
 }
 
@@ -404,25 +425,30 @@ function gatherConnectedTiles(tile) {
 	var connected = [];	
 
 	// Searches through all neighbours to find all connected tiles.
-	function crawl(root, num, crawled) {
-		
+	function crawl(rootTile, crawled) {
+		if (rootTile === null) {
+			console.warn("rootTile not set");
+			return null;
+		} 
+		var root = rootTile.idx, 
+			num = rootTile.number;
 		crawled.push(root);
 
-		var foundNeighbours = getNeighbours(root, num),
+		var foundNeighbours = getNeighbours(rootTile),
 			counted = foundNeighbours.length;
 		
 		for (var i = 0; i<counted; i++) {
 			var tileIdx = foundNeighbours[i];
 			if (crawled.indexOf(tileIdx) === -1) {
-				crawl(tileIdx, num, crawled);
+				var tile = find(board, function(t) { return tileIdx === t.idx; });
+				crawl(tile, crawled);
 			}
 		}
 	}
 
-	crawl(tile.idx, tile.num, connected);
-	
-	return map(connected, function(tileIdx) { return getTileFromBoard(tileIdx) });
+	crawl(tile, connected);
 
+	return map(connected, function(tileIdx) { return getTileFromBoard(tileIdx) });
 }
 
 function draw() {
@@ -430,38 +456,25 @@ function draw() {
 	// create the DIV elements if they don't exist yet
 	var ts = getTileSize();
 
-	function createDiv(tile, idx) {
-		var tw = ts.width + "px", 
-			th = ts.height + "px",
-			row = Math.floor(idx / WIDTH),
-			column = idx % WIDTH,
-			br = (idx + 1) % WIDTH == 0, // check if row ended
-			color = ""+tileColors[tile-1],
-			bgColor =";background-color:#" + color,
-			textColor = isDarkColor(color) ? ";color:white" : ";color:black",
-			padding = 0,
-			left = (padding + ts.width) * column,
-			top = ts.height * row,
-			leftpx = left + "px",
-			toppx = top + "px";
-
-			if (typeof color == "object")
-				debugger;
-		// TODO(dkg): maybe encode the properties like color and position in data attributes as well?
-		return  '<div class="tile" id="tile-'+idx+'" data-idx="'+idx+'" data-number="'+tile+'" style="width:'+tw+';height:'+th+bgColor+textColor+';left:'+leftpx+';top:'+toppx+';"><span>'+tile+'</span></div>' +
-				(br ? '<br style="clear:both" />' : "");
+	function drawTile(tile) {
+		return tile.draw(ts);
 	}
-
-	var elements = map(board, createDiv);
+	
+	var elements = map(board, drawTile);
 
 	domBoard.innerHTML = elements.join("\n");
 
-	each(doc.querySelectorAll(".tile"), function(tile) {
-		addEvent(tile, "click", handleTileClick);
+	each(doc.querySelectorAll(".tile"), function(tileElement) {
+		addEvent(tileElement, "click", handleTileClick);
 	});
-	
+	each(board, function(tile) {
+		// if (tile.element === null) {
+			tile.element = doc.getElementById("tile-" + tile.idx);
+		// }
+	});
+
 	var totalHeight = HEIGHT * ts.height;
-	domBoard.setAttribute("style", "height:"+(totalHeight+20)+"px");
+	domBoard.setAttribute("style", "height:"+(totalHeight+10)+"px");
 }
 
 function clearBoard() {
@@ -505,8 +518,9 @@ function setupBoard() {
 
 	// TODO(dkg): the initial board should have more 1s and 2s than 3s!
 	// TODO(dkg): make sure the board is playable!
-	// TODO(dkg): use the Tile() object here!
-	board = createList(NUMBER_OF_TILES, function(idx) { return randomInteger(3); });
+	board = createList(NUMBER_OF_TILES, function(idx) { 
+		return new Tile(idx, randomInteger(3), null); 
+	});
 }
 
 function restart() {
