@@ -2,6 +2,10 @@
 	10 - A game of numbers.	
 */
 
+// TODO(dkg): refactor this logic so that the tile.idx is not pointing to the position
+//            within an array (as that is meaningless), but rather pointing to the
+//            position of the tile on the board!
+
 (function(win, doc, undefined){
 
 "use strict";
@@ -61,6 +65,9 @@ function Tile(index, number, element) {
 	this.number = number;
 	this.element = element || null;
 	this.collapsed = false;
+	// TODO(dkg): also save the initial top and left position
+	//            so we can correctly draw the tile at its 
+	//            designated position
 }
 Tile.prototype.draw = function(tileSize) {
 	var ts = tileSize;
@@ -310,6 +317,11 @@ function handleTileClick(ev) {
 	});
 }
 
+
+// TODO(dkg): refactor this logic so that the tile.idx is not pointing to the position
+//            within an array (as that is meaningless), but rather pointing to the
+//            position of the tile on the board!
+
 // Collapse tiles into one and advance the number.
 // Collapse into the tile that was clicked on, however, do apply "gravity", ie
 // fall down if there are connected tiles below and collapse further down until
@@ -344,7 +356,9 @@ function collapseTiles(clickedOnTile, connectedTiles) {
 	// 10. Enjoy life.
 
 	var clickedElement = clickedOnTile.element;
-
+// TODO(dkg): refactor this logic so that the tile.idx is not pointing to the position
+//            within an array (as that is meaningless), but rather pointing to the
+//            position of the tile on the board!
 	each(connectedTiles, function(tile) {
 		var element = tile.element;
 		if (clickedElement.id == element.id)
@@ -371,6 +385,8 @@ function collapseTiles(clickedOnTile, connectedTiles) {
 	clickedElement.attributes["data-number"] = clickedOnTile.number;
 	clickedElement.children[0].innerHTML = clickedOnTile.number;
 
+	draw();
+
 	// apply gravity now
 	
 	// drop new tiles and let the player click again
@@ -386,9 +402,27 @@ function animate(element, options) {
 	element.attributes["style"] = "display:none;";
 }
 
+// TODO(dkg): refactor this logic so that the tile.idx is not pointing to the position
+//            within an array (as that is meaningless), but rather pointing to the
+//            position of the tile on the board!
+function replaceCollapsed() {
+	var collapsed = filter(board, function(tile) { return tile.collapsed; });
+	while (collapsed.length > 0) {
+		var co = collapsed.shift();
+		co.collapsed = false;
+		co.number = randomInteger(3);
+		co.element = null;
+		// position the element somewhere high up so it can fall down later
+		
+	}
+}
+
 
 // Returns an array with indices of the neighbours for the given index if they
 // share the same number value.
+// TODO(dkg): refactor this logic so that the tile.idx is not pointing to the position
+//            within an array (as that is meaningless), but rather pointing to the
+//            position of the tile on the board!
 function getNeighbours(tile) {
 	// Remember: tiles across rows are not connected at the beginning/end of rows,
 	// ie row 2, colum 0 is not connected to row 1, column WIDTH-1, even when they
@@ -457,6 +491,8 @@ function draw() {
 	var ts = getTileSize();
 
 	function drawTile(tile) {
+		if (tile.collapsed)
+			return "";
 		return tile.draw(ts);
 	}
 	
