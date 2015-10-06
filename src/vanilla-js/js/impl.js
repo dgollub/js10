@@ -1,10 +1,6 @@
 /*
-	10 - A game of numbers.	
+	10 - A game of numbers.
 */
-
-// TODO(dkg): refactor this logic so that the tile.idx is not pointing to the position
-//            within an array (as that is meaningless), but rather pointing to the
-//            position of the tile on the board!
 
 (function(win, doc, undefined){
 
@@ -65,36 +61,52 @@ function Tile(index, number, element) {
 	this.number = number;
 	this.element = element || null;
 	this.collapsed = false;
-	// TODO(dkg): also save the initial top and left position
-	//            so we can correctly draw the tile at its 
-	//            designated position
+	this.originalPosition = {
+		top: -1,
+		left: -1
+	};
+}
+Tile.prototype.isEmpty = function() {
+	return this.number === null || this.number === 0;
 }
 Tile.prototype.draw = function(tileSize) {
 	var ts = tileSize;
-	function createDiv(num, idx) {
+	function createDiv(num, idx, position, isEmpty) {
 		var tw = ts.width + "px", 
 			th = ts.height + "px",
 			row = Math.floor(idx / WIDTH),
 			column = idx % WIDTH,
 			br = (idx + 1) % WIDTH == 0, // check if row ended
-			color = ""+tileColors[num-1],
-			bgColor =";background-color:#" + color,
-			textColor = isDarkColor(color) ? ";color:white" : ";color:black",
+			color = isEmpty ? "" : ""+tileColors[num-1],
+			bgColor = isEmpty ? "" : ";background-color:#" + color,
+			textColor = isEmpty ? "" : isDarkColor(color) ? ";color:white" : ";color:black",
+			text = isEmpty ? "" : ''+num,
 			padding = 0,
 			left = (padding + ts.width) * column,
-			top = ts.height * row,
-			leftpx = left + "px",
+			top = ts.height * row;
+
+		if (position.top === -1) {
+			position.top = top;
+			position.left = left;
+		} else {
+			left = position.left;
+			top = position.top;
+		}
+		var leftpx = left + "px",
 			toppx = top + "px";
 
-			if (typeof color == "object")
-				debugger;
 		// TODO(dkg): maybe encode the properties like color and position in data attributes as well?
-		var div = '<div class="tile" id="tile-'+idx+'" data-idx="'+idx+'" data-number="'+num+'" style="width:'+tw+';height:'+th+bgColor+textColor+';left:'+leftpx+';top:'+toppx+';"><span>'+num+'</span></div>' +
+		var div = '<div class="tile" id="tile-'+idx+'" data-idx="'+idx+'" data-number="'+text+'" style="width:'+tw+';height:'+th+bgColor+textColor+';left:'+leftpx+';top:'+toppx+';"><span>'+text+'</span></div>' +
 				(br ? '<br style="clear:both" />' : "");
 		return div;
 	}
-	return createDiv(this.number, this.idx);
+	return createDiv(this.number, this.idx, this.originalPosition, this.isEmpty());
 }
+Tile.prototype.reset = function() {
+	this.collapsed = false;
+	this.number = null;
+	this.element.attributes["style"] = "";
+};
 
 // utils
 
@@ -317,11 +329,6 @@ function handleTileClick(ev) {
 	});
 }
 
-
-// TODO(dkg): refactor this logic so that the tile.idx is not pointing to the position
-//            within an array (as that is meaningless), but rather pointing to the
-//            position of the tile on the board!
-
 // Collapse tiles into one and advance the number.
 // Collapse into the tile that was clicked on, however, do apply "gravity", ie
 // fall down if there are connected tiles below and collapse further down until
@@ -356,9 +363,6 @@ function collapseTiles(clickedOnTile, connectedTiles) {
 	// 10. Enjoy life.
 
 	var clickedElement = clickedOnTile.element;
-// TODO(dkg): refactor this logic so that the tile.idx is not pointing to the position
-//            within an array (as that is meaningless), but rather pointing to the
-//            position of the tile on the board!
 	each(connectedTiles, function(tile) {
 		var element = tile.element;
 		if (clickedElement.id == element.id)
@@ -385,12 +389,70 @@ function collapseTiles(clickedOnTile, connectedTiles) {
 	clickedElement.attributes["data-number"] = clickedOnTile.number;
 	clickedElement.children[0].innerHTML = clickedOnTile.number;
 
-	draw();
+	draw(collapseTilesPart2);
+}
+function collapseTilesPart2() {
+	// reset all collapsed tiles to their original position and remove all styling
+	// so that they can be reused again
+
+	each(board, function(tile) {
+		if (tile.collapsed) {
+			tile.reset();
+		}
+	});
+
+	// draw();
 
 	// apply gravity now
+	applyGravity();
 	
 	// drop new tiles and let the player click again
 	
+}
+
+function applyGravity() {
+
+	function applyGravityOneStep() {
+		// find the elements that are hanging in the air and have them drop down
+		var airedPairs = filter(map(board, function(tile) {
+			if (tile.isEmpty()) return false;
+			var bottom = getTileFromBoard(tile.idx + WIDTH);
+			if (!bottom) return false;
+			if (!bottom.isEmpty()) return false;
+			return [tile, bottom];
+		}), function(tile) { return tile !== false; });
+
+		// drop down one field - we are using side-effects here, because 
+		// it is easy
+		each(airedPairs, function(tuple) {
+			var tile = tuple[0],
+				bottomTile = tuple[1],
+				element = tile.element,
+				bottomElement = bottomTile.element,
+				opts = {
+					"top": bottomElement.offsetTop+"px",
+					"left": bottomElement.offsetLeft+"px"
+				};
+			// right now no real animations happen
+			// if we want to change this, we need to make it work async
+			// with setTimeout or something, in which case we need to
+			// have a callback run after the last element was animated
+			animate(element, opts);
+			
+			// the bottom tile should now become the tile, and the tile
+			// should become an empty one
+			bottomTile.number = tile.number;
+			tile.number = null;
+		});
+		
+		return airedPairs.length > 0;
+	}
+	
+	while (applyGravityOneStep()) {
+		// draw(); // add small pause after each draw call
+	}
+	
+	draw();
 }
 
 function animate(element, options) {
@@ -402,27 +464,8 @@ function animate(element, options) {
 	element.attributes["style"] = "display:none;";
 }
 
-// TODO(dkg): refactor this logic so that the tile.idx is not pointing to the position
-//            within an array (as that is meaningless), but rather pointing to the
-//            position of the tile on the board!
-function replaceCollapsed() {
-	var collapsed = filter(board, function(tile) { return tile.collapsed; });
-	while (collapsed.length > 0) {
-		var co = collapsed.shift();
-		co.collapsed = false;
-		co.number = randomInteger(3);
-		co.element = null;
-		// position the element somewhere high up so it can fall down later
-		
-	}
-}
-
-
 // Returns an array with indices of the neighbours for the given index if they
 // share the same number value.
-// TODO(dkg): refactor this logic so that the tile.idx is not pointing to the position
-//            within an array (as that is meaningless), but rather pointing to the
-//            position of the tile on the board!
 function getNeighbours(tile) {
 	// Remember: tiles across rows are not connected at the beginning/end of rows,
 	// ie row 2, colum 0 is not connected to row 1, column WIDTH-1, even when they
@@ -485,14 +528,14 @@ function gatherConnectedTiles(tile) {
 	return map(connected, function(tileIdx) { return getTileFromBoard(tileIdx) });
 }
 
-function draw() {
+function draw(cb) {
 	console.log("draw");
 	// create the DIV elements if they don't exist yet
 	var ts = getTileSize();
 
 	function drawTile(tile) {
-		if (tile.collapsed)
-			return "";
+		// if (tile.collapsed)
+			// return "";
 		return tile.draw(ts);
 	}
 	
@@ -511,6 +554,10 @@ function draw() {
 
 	var totalHeight = HEIGHT * ts.height;
 	domBoard.setAttribute("style", "height:"+(totalHeight+10)+"px");
+
+	if (typeof cb == "function") {
+		setTimeout(cb, 0);
+	}
 }
 
 function clearBoard() {
