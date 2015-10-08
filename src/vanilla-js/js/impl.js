@@ -89,8 +89,8 @@ Tile.prototype.draw = function(tileSize) {
 			position.top = top;
 			position.left = left;
 		} else {
-			left = position.left;
-			top = position.top;
+			// left = position.left;
+			// top = position.top;
 		}
 		var leftpx = left + "px",
 			toppx = top + "px";
@@ -407,7 +407,7 @@ function collapseTilesPart2() {
 	applyGravity();
 	
 	// drop new tiles and let the player click again
-	
+	addNewTilesAndApplyGravityAgain();
 }
 
 function applyGravity() {
@@ -438,21 +438,41 @@ function applyGravity() {
 			// with setTimeout or something, in which case we need to
 			// have a callback run after the last element was animated
 			animate(element, opts);
-			
+
 			// the bottom tile should now become the tile, and the tile
 			// should become an empty one
 			bottomTile.number = tile.number;
 			tile.number = null;
 		});
-		
+
 		return airedPairs.length > 0;
 	}
-	
+
 	while (applyGravityOneStep()) {
 		// draw(); // add small pause after each draw call
 	}
-	
-	draw();
+
+	// draw();
+}
+
+function addNewTilesAndApplyGravityAgain() {
+	function addNewTiles() {
+		var emptyTilesFirstRow = filter(board, function(tile) {
+			return tile.idx < WIDTH && tile.number === null;
+		});
+		console.log("emptyTilesFirstRow", emptyTilesFirstRow);
+
+		each(emptyTilesFirstRow, function(tile) {
+			tile.number = randomInteger(3);
+		});
+
+		return emptyTilesFirstRow;
+	}
+
+	while (addNewTiles().length > 0) {
+		applyGravity();
+		// draw();
+	}
 }
 
 function animate(element, options) {
