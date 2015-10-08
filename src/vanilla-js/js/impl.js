@@ -49,6 +49,8 @@ colors.push({'Pool Blue': '00BBEF'});
 
 var body = doc.getElementById("body"),
 	domBoard = doc.getElementById("board"),
+	pointsLabel = doc.getElementById("points"),
+	points = 0,
 	board = [],
 	tileColors = [],
 	WIDTH = 10,   // arbritrary scale, not pixels
@@ -61,6 +63,7 @@ function Tile(index, number, element) {
 	this.number = number;
 	this.element = element || null;
 	this.collapsed = false;
+	// TODO(dkg): remove this originalPosition stuff as it is not needed
 	this.originalPosition = {
 		top: -1,
 		left: -1
@@ -389,6 +392,10 @@ function collapseTiles(clickedOnTile, connectedTiles) {
 	clickedElement.attributes["data-number"] = clickedOnTile.number;
 	clickedElement.children[0].innerHTML = clickedOnTile.number;
 
+	// TODO(dkg): add points based on number of connected tiles that the
+	//            user just collapsed (somehow dependent on the tile number/value)
+	points += clickedOnTile.number * (connectedTiles.length + 1);
+
 	draw(collapseTilesPart2);
 }
 function collapseTilesPart2() {
@@ -404,13 +411,13 @@ function collapseTilesPart2() {
 	// draw();
 
 	// apply gravity now
-	applyGravity();
-	
-	// drop new tiles and let the player click again
-	addNewTilesAndApplyGravityAgain();
+	applyGravity(function() {
+		// drop new tiles and let the player click again
+		addNewTilesAndApplyGravityAgain();
+	});
 }
 
-function applyGravity() {
+function applyGravity(doneCallback) {
 
 	function applyGravityOneStep() {
 		// find the elements that are hanging in the air and have them drop down
@@ -448,14 +455,31 @@ function applyGravity() {
 		return airedPairs.length > 0;
 	}
 
-	while (applyGravityOneStep()) {
-		// draw(); // add small pause after each draw call
+	function exec() {
+		console.log("applyGravity::exec");
+		var again = applyGravityOneStep();
+		setTimeout(function() {
+			draw();
+			if (again) {
+				exec();
+			} else {
+				if (typeof doneCallback == "function") {
+					doneCallback();
+				}
+			}
+		}, 150);
 	}
+
+	exec();
+	// while () {
+		// draw(); // add small pause after each draw call
+	// }
 
 	// draw();
 }
 
 function addNewTilesAndApplyGravityAgain() {
+	console.log("addNewTilesAndApplyGravityAgain");
 	function addNewTiles() {
 		var emptyTilesFirstRow = filter(board, function(tile) {
 			return tile.idx < WIDTH && tile.number === null;
@@ -469,10 +493,28 @@ function addNewTilesAndApplyGravityAgain() {
 		return emptyTilesFirstRow;
 	}
 
-	while (addNewTiles().length > 0) {
-		applyGravity();
-		// draw();
+	function exec() {
+		console.log("addNewTilesAndApplyGravityAgain::exec");
+		var again = addNewTiles().length > 0;
+		setTimeout(function() {
+			applyGravity(again ? exec : turnDone);
+			// draw();
+			// applyGravity();
+			// if (again) {
+				// exec();
+			// } else {
+				// if (typeof doneCallback == "function") {
+					// doneCallback();
+				// }
+			// }
+		}, 50);
 	}
+
+	exec();
+}
+
+function turnDone() {
+	console.log("turnDone");
 }
 
 function animate(element, options) {
@@ -562,6 +604,7 @@ function draw(cb) {
 	var elements = map(board, drawTile);
 
 	domBoard.innerHTML = elements.join("\n");
+	pointsLabel.innerHTML = points + " points";
 
 	each(doc.querySelectorAll(".tile"), function(tileElement) {
 		addEvent(tileElement, "click", handleTileClick);
@@ -624,6 +667,9 @@ function setupBoard() {
 	board = createList(NUMBER_OF_TILES, function(idx) { 
 		return new Tile(idx, randomInteger(3), null); 
 	});
+
+	pointsLabel.innerHTML = "";
+	points = 0;
 }
 
 function restart() {
@@ -634,6 +680,11 @@ function restart() {
 
 addEvent(window, "resize", function(ev) {
 	draw();	
+});
+
+addEvent(doc.getElementById("buttonRestart"), "click", function(ev) {
+	ev.preventDefault();
+	restart();
 });
 
 // let's run it
