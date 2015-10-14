@@ -321,8 +321,8 @@ function handleTileClick(ev) {
 	var connectedTiles = gatherConnectedTiles(tile),
 		count = connectedTiles.length;
 	each(connectedTiles, function(connected, idx){
-		animateTile(connected, "background-color:lime", 150, function() {
-			animateTile(connected, "background-color:#"+tileColors[connected.num-1], 150, function(){
+		animateTile(connected, "background-color:lime", 50, function() {
+			animateTile(connected, "background-color:#"+tileColors[connected.num-1], 100, function(){
 				if (--count == 0) { // this should be correct even with out of order execution
 					// Collapse tiles into one and advance the number.
 					collapseTiles(tile, connectedTiles);
@@ -364,6 +364,8 @@ function collapseTiles(clickedOnTile, connectedTiles) {
 	//  8. Update high score.
 	//  9. Figure out if more moves are possible. If not, game over.
 	// 10. Enjoy life.
+
+	// NOTE(dkg): the current implementation may or may not follow the above comments.
 
 	var clickedElement = clickedOnTile.element;
 	each(connectedTiles, function(tile) {
@@ -408,8 +410,9 @@ function collapseTilesPart2() {
 		}
 	});
 
-	// draw();
-
+	applyGravityAndAddNewTiles();
+}
+function applyGravityAndAddNewTiles() {
 	// apply gravity now
 	applyGravity(function() {
 		// drop new tiles and let the player click again
@@ -467,15 +470,10 @@ function applyGravity(doneCallback) {
 					doneCallback();
 				}
 			}
-		}, 150);
+		}, 50);
 	}
 
 	exec();
-	// while () {
-		// draw(); // add small pause after each draw call
-	// }
-
-	// draw();
 }
 
 function addNewTilesAndApplyGravityAgain() {
@@ -496,18 +494,12 @@ function addNewTilesAndApplyGravityAgain() {
 	function exec() {
 		console.log("addNewTilesAndApplyGravityAgain::exec");
 		var again = addNewTiles().length > 0;
-		setTimeout(function() {
-			applyGravity(again ? exec : turnDone);
-			// draw();
-			// applyGravity();
-			// if (again) {
-				// exec();
-			// } else {
-				// if (typeof doneCallback == "function") {
-					// doneCallback();
-				// }
-			// }
-		}, 50);
+		if (again) {
+			setTimeout(function() {
+				// applyGravity(again ? exec : turnDone);
+				draw(applyGravityAndAddNewTiles);
+			}, 0);
+		}
 	}
 
 	exec();
