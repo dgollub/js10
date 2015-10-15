@@ -29,11 +29,25 @@
 	position: relative;
 }
 
-.tile {
-	border: 1px solid green;
-	margin: 3px;
-	float: left;
+#points {
 	position: relative;
+	width: 100;
+}
+
+#controls {
+	position: relative;
+	width: 100%;
+	clear: both;
+}
+
+button {
+	position: relative;
+}
+
+.tile {
+	/*border: 1px solid green;*/
+	position: absolute;
+	display: inline-block;
 	text-align: center;
 }
 
