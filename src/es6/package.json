@@ -1,0 +1,19 @@
+{
+  "name": "js10es6canvas",
+  "description": "js10 - A game about combining tiles/cells of similiar numbers into the next higher number. This is the ES6 implementation which uses a canvas element for display.",
+  "version": "0.0.1",
+  "license": "MIT",
+  "devDependencies": {
+    
+  },
+  "scripts": {
+    "clean": "rm -rf dist/*.js dist/*.css",
+    "js": "browserify js/app.es6 -t babelify --outfile dist/app.js",
+    "watch:js": "echo TODO",
+    "watch:sass": "echo TODO",
+    "release": "npm run clean && npm run js && npm run sass",
+    "sass": "sass scss/app.scss dist/app.css",
+    "show": "../../build-and-show.sh"
+  },
+  "main": "dist/app.js"
+}
