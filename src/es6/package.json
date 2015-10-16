@@ -6,12 +6,18 @@
   "devDependencies": {
     
   },
+  "babel": {
+    "sourceMaps": "both"
+  },
   "scripts": {
     "clean": "rm -rf dist/*.js dist/*.css",
-    "js": "browserify js/app.es6 -t babelify --outfile dist/app.js",
-    "watch:js": "echo TODO",
+    "js": "browserify js/app.es6 -d -t [ babelify ] --outfile dist/app.js",
+    "js:vendor": "cat ./node_modules/babel-core/browser-polyfill.min.js ../vendor/js/es5-sham.min.js ../vendor/js/es5-shim.min.js ../vendor/js/lodash-3.10.min.js ../vendor/js/html5-3.7.0.min.js ../vendor/js/jquery*.min.js > dist/vendor.min.js",
+    "js:full": "npm run js:vendor && npm run js",
+    "watch:js": "browserify js/app.es6 --watch -d -t [ babelify ] --outfile dist/app.js",
     "watch:sass": "echo TODO",
-    "release": "npm run clean && npm run js && npm run sass",
+    "release": "npm run clean && npm run js",
+    "sass-win": "echo the sass command doesnt work in cygwin under windows with npm installed via chocolaty and ruby and gems installed via cygwin... sigh",
     "sass": "sass scss/app.scss dist/app.css",
     "show": "../../build-and-show.sh"
   },
