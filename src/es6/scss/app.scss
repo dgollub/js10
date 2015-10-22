@@ -1,9 +1,13 @@
 /*
-	SASS
+    SASS
 */
 
 $red: #ff0000;
 
 body {
-	background-color: $red
+    //
+}
+
+#board {
+    border: 1px solid lime;
 }

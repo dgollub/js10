@@ -1,7 +1,7 @@
 /*
-	SASS
+    SASS
 */
-body {
-  background-color: #ff0000; }
+#board {
+  border: 1px solid lime; }
 
 /*# sourceMappingURL=app.css.map */
