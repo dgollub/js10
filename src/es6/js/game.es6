@@ -25,11 +25,25 @@ const COLORS = (() => {
 })();
 
 let _rndColor = 0;
-let getRandomColor = () => {
+let getColor = (idx = -1) => {
     if (_rndColor >= COLORS.length)
         _rndColor = 0;
+    if (idx > -1 && idx < COLORS.length)
+        return COLORS[idx];
     return COLORS[_rndColor++];
 };
+
+const MAGIC_COLORS = (() => {
+    let ret = [];
+    for (let x = 0; x < 50; x++) {
+        ret.push(getColor(x));
+    }
+    return ret;
+})();
+const MAGIC_COLORS_REVERSE = (() => {
+    return [...MAGIC_COLORS].reverse();
+})();
+
 
 class Tile {
 
@@ -48,18 +62,28 @@ class Tile {
         let [l, t] = this.canvasCoordinates(sw, sh);
 
         ctx.lineWidth = 1;
-        ctx.fillStyle = (this.c + this.r) % 2 != 0 ? "#FF4500" : "#FFA500";
-        // ctx.fillStyle = COLORS[this.c + this.r];
-        // ctx.fillStyle = getRandomColor();
+        // ctx.fillStyle = (this.c + this.r) % 2 != 0 ? "#FF4500" : "#FFA500";
+        ctx.fillStyle = MAGIC_COLORS[this.number-1];
         ctx.fillRect(l, t, w, h);
-        
+
         if (this.tracked) {
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = (this.c + this.r) % 2 != 0 ? "magenta" : "yellow";
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = MAGIC_COLORS_REVERSE[this.number-1];
             ctx.strokeRect(l, t, w, h);
         }
 
-        // this.tracked = false;
+        // write the number in the center of the tile
+        let [x, y] = [
+            l + Math.ceil(w / 2.0), 
+            t + Math.ceil(h / 2.0)
+        ];
+        
+        // ctx.fillStyle = MAGIC_COLORS_REVERSE[this.number];
+        ctx.fillStyle = "black";
+        ctx.font = "32px courier";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.number, x, y);
     }
 
     canvasCoordinates(sw, sh) {
