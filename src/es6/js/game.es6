@@ -10,6 +10,7 @@ import { getRandomInt } from './utils.es6';
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 10;
 const BOARD_TILES_COUNT = BOARD_WIDTH * BOARD_HEIGHT;
+
 const COLORS = (() => {
     let inner = () => {
         let rgb = [];
@@ -77,7 +78,7 @@ class Tile {
             l + Math.ceil(w / 2.0), 
             t + Math.ceil(h / 2.0)
         ];
-        
+
         // ctx.fillStyle = MAGIC_COLORS_REVERSE[this.number];
         ctx.fillStyle = "black";
         ctx.font = "32px courier";
@@ -182,7 +183,7 @@ export default class Game {
             // console.log("mouse moved", mousePos.x, mousePos.y);
             return mousePos;
         };
-        
+
         let mouseTracker = (ev) => {
             let mousePos = getMouseCoordinates(ev),
                 dims = this.getDims();
@@ -200,12 +201,39 @@ export default class Game {
                     tile.tracked = true;
                 }
             });
-            
+
         }.bind(this);
 
         $("#board").on("mousemove", mouseTracker);
 
+        let mouseClick = (ev) => {
+            let mousePos = getMouseCoordinates(ev),
+                dims = this.getDims();
+            // console.log("clicked here", mousePos);
+
+            let clickedOnTiles = this.board.filter((tile) => {
+                return tile.tracked; // we are cheating here
+            });
+
+            this.handleTileClicked(clickedOnTiles.length > 0 ? clickedOnTiles[0] : null);
+
+        }.bind(this);
+
+        $("#board").on("click", mouseClick);
+
         resize();
+    }
+
+    handleTileClicked(clickedOnTile) {
+        // console.log("handleTileClicked", clickedOnTile);
+        if (null === clickedOnTile)
+            return;
+        // TODO(dkg): check if tile has neighbours with the same number
+        // if yes, increase current tile's number and collapse all connected
+        // neighbours with the same number onto the tile (animate this as well).
+        // Then let gravity drop down all tiles that are hanging in the air.
+        // After that add fresh tiles to the board until all empty spaces are
+        // filled up again - let these drop from the top as well.
     }
 
     play() {
@@ -213,17 +241,17 @@ export default class Game {
 
         window.requestAnimationFrame(this.play.bind(this));
     }
-    
+
     getDims() {
         return [parseInt(this.boardElement.clientWidth, 10), parseInt(this.boardElement.clientHeight, 10)];
     }
-    
+
     draw() {
         console.log("Game::draw");
 
         let ctx = this.ctx;
         let [w, h] = this.getDims();
-        
+
         ctx.clearRect(0, 0, w, h);
         ctx.fillStyle = "black";
         ctx.fillRect(0, 0, w, h);
@@ -241,5 +269,5 @@ export default class Game {
            tile.draw(ctx, w, h);
         });
     }
-    
+
 }
