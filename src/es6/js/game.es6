@@ -1,8 +1,11 @@
 /*
     The game code and logic, with UI handling.
+    TODO(dkg): use the following techniques
+        - generators and yield
+        - Symbols
 */
 
-import { getRandomInt } from './utils.es6';
+import { getRandomInt, isDarkColor } from './utils.es6';
 
 // these are not in pixel, but rather our internal representation of units
 // this means N = N number of items, e.g. 10 = 10 items, not 10 pixels
@@ -12,11 +15,18 @@ const BOARD_HEIGHT = 10;
 const BOARD_TILES_COUNT = BOARD_WIDTH * BOARD_HEIGHT;
 
 const COLORS = (() => {
+    // TODO(dkg): eliminate colors that are too close to each other and/or duplicates
     let inner = () => {
         let rgb = [];
-        for(var i = 0; i < 3; i++)
-            rgb.push(Math.floor(Math.random() * 255));
-        return 'rgb('+ rgb.join(',') +')';
+        for (var i = 0; i < 3; i++) {
+            let v = (parseInt(Math.floor(Math.random() * 255), 10)).toString(16);
+            if (v.length <= 1) {
+                v = `0${v}`;
+            }
+            rgb.push(v);
+        }
+        // return 'rgb('+ rgb.join(',') +')';
+        return '#' + rgb.join("");
     }
     let ret = [];
     for (let x = 0; x < 1000; x++) {
@@ -45,6 +55,9 @@ const MAGIC_COLORS_REVERSE = (() => {
     return [...MAGIC_COLORS].reverse();
 })();
 
+const MOVE_STEPS_IN_FRAMES = 30;
+
+// console.log(MAGIC_COLORS);
 
 class Tile {
 
@@ -53,23 +66,64 @@ class Tile {
         // in col/row coordinates, that is in our own internal units
         this.c = c;
         this.r = r;
+        this.moveTo = false;
+        this.stepsMoved = 0;
+        this.destroy = false;
         this.tracked = false;
     }
 
+    // called once per frame - only once per frame!
     draw(ctx, sw, sh) {
         // TODO(dkg): randomize color according to this.number
+        // TODO(dkg): implement tile destruction and adding new tiles from above
+        if (this.destroy === true) {
+            return;
+        }
 
         let [w, h] = this.tileDimensions(sw, sh);
-        let [l, t] = this.canvasCoordinates(sw, sh);
+        // these are the original pixel coords - they need to be adjusted
+        // when we have to collapse
+        let [l, t] = [-1, -1]; 
+        
+        if (this.moveTo !== false) {
+            this.stepsMoved++
+            if (this.stepsMoved <= MOVE_STEPS_IN_FRAMES) {
+                // TODO(dkg): rethink this approach - it is not working at all right now.
+                // We start at c0, r0 and want to go to cN, rM
+                // with (cN != c0 and rM != r0) in a constant
+                // number of steps (MOVE_STEPS_IN_FRAMES).
+                // This is pixel wise, not column/row wise.
+                let [l, t] = this.canvasCoordinates(sw, sh);
+                let [ml, mt] = this.moveTo.canvasCoordinates(sw, sh); 
+                // distance between start tile and end tile in pixel
+                let [dl, dt] = [ml - l, mt - t];
+                let [deltaWidthInPixel, deltaHeightInPixel] = [dl / MOVE_STEPS_IN_FRAMES, dt / MOVE_STEPS_IN_FRAMES];
+                let [totalDWIP, totalDHIP] = [deltaWidthInPixel * this.stepsMoved, deltaHeightInPixel * this.stepsMoved];
+                let [targetLeft, targetTop] = [l + totalDWIP, t + totalDHIP];
+                [l, t] = [Math.ceil(targetLeft), Math.ceil(targetTop)];
+            } else {
+                [this.c, this.r] = [this.moveTo.c, this.moveTo.r];
+                [l, t] = this.moveTo.canvasCoordinates(sw, sh); 
+                this.stepsMoved = 0;
+                this.moveTo = false;
+                this.destroy = true;
+            }
+        } else {
+            [l, t] = this.canvasCoordinates(sw, sh);
+        }
+
+        let fillColor = MAGIC_COLORS[this.number-1];
+        let antiColor = isDarkColor(fillColor) ? "lightgray" : "black";
 
         ctx.lineWidth = 1;
         // ctx.fillStyle = (this.c + this.r) % 2 != 0 ? "#FF4500" : "#FFA500";
-        ctx.fillStyle = MAGIC_COLORS[this.number-1];
+        ctx.fillStyle = fillColor;
         ctx.fillRect(l, t, w, h);
 
         if (this.tracked) {
             ctx.lineWidth = 4;
-            ctx.strokeStyle = MAGIC_COLORS_REVERSE[this.number-1];
+            // ctx.strokeStyle = MAGIC_COLORS_REVERSE[this.number-1];
+            ctx.strokeStyle = antiColor;
             ctx.strokeRect(l, t, w, h);
         }
 
@@ -80,11 +134,16 @@ class Tile {
         ];
 
         // ctx.fillStyle = MAGIC_COLORS_REVERSE[this.number];
-        ctx.fillStyle = "black";
+        ctx.fillStyle = antiColor;
         ctx.font = "32px courier";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(this.number, x, y);
+    }
+
+    animateCollapseTo(targetTile) {
+        this.moveTo = targetTile;
+        this.stepsMoved = 0;
     }
 
     canvasCoordinates(sw, sh) {
@@ -94,6 +153,9 @@ class Tile {
         // calc the top and left coordinates in pixel (top-left is 0, 0 in our coordinate system
         // and bottom-right is our screen_height-screen_width)
         // this depends on the tiles position (in col/row coords)
+        // In case we are moving/collapsing onto another tile, we will need
+        // to move once per frame into a certain direction.
+        
         let [l, t] = [
             this.c * tw,
             this.r * th
@@ -142,6 +204,8 @@ export default class Game {
 
         this.ctx = context;
         this.boardElement = boardElement;
+
+        this.drawing = false;
 
         let resize = (ev) => {
             let [ww, wh] = [$(window).width(), $(window).height()];
@@ -207,6 +271,13 @@ export default class Game {
         $("#board").on("mousemove", mouseTracker);
 
         let mouseClick = (ev) => {
+            ev.preventDefault();
+
+            // if (this.drawing !== true) {
+                // console.log("Ignored mouse click because I was drawing.");
+                // return;
+            // }
+
             let mousePos = getMouseCoordinates(ev),
                 dims = this.getDims();
             // console.log("clicked here", mousePos);
@@ -228,17 +299,29 @@ export default class Game {
         // console.log("handleTileClicked", clickedOnTile);
         if (null === clickedOnTile)
             return;
+
         // TODO(dkg): check if tile has neighbours with the same number
         // if yes, increase current tile's number and collapse all connected
         // neighbours with the same number onto the tile (animate this as well).
         // Then let gravity drop down all tiles that are hanging in the air.
         // After that add fresh tiles to the board until all empty spaces are
         // filled up again - let these drop from the top as well.
+
+        let connectedTiles = this.gatherConnectedTiles(clickedOnTile);
+        connectedTiles.forEach((tile) => {
+            // animate to collapse onto clicked tile
+            // remove tiles after animation
+            // count and add points
+            // check if game over
+            tile.animateCollapseTo(clickedOnTile);
+        });
     }
 
     play() {
         this.draw();
-
+        // TODO(dkg): remove destroyed tiles and add new tiles from above the board
+        //            with gravity pulling them down etc.
+        //            only let the player continue to play after all animations are done
         window.requestAnimationFrame(this.play.bind(this));
     }
 
@@ -248,6 +331,7 @@ export default class Game {
 
     draw() {
         console.log("Game::draw");
+        this.drawing = true;
 
         let ctx = this.ctx;
         let [w, h] = this.getDims();
@@ -264,10 +348,80 @@ export default class Game {
         // Also, move the board area to the center if there is more canvas space
         // than needed to display the board.
         
-        // draw individual tiles
+        // draw individual tiles - only the tracked one should be drawn over
+        // all other tiles last, because otherwise the border outline is
+        // overdrawn by neighbouring tiles
+        let delayedDisplay = [];
         this.board.forEach((tile) => {
-           tile.draw(ctx, w, h);
+            if (tile.tracked) {
+                delayedDisplay.push(tile);
+            } else {
+                tile.draw(ctx, w, h);
+            }
         });
+        delayedDisplay.forEach((tile) => {
+            tile.draw(ctx, w, h);
+        });
+
+        this.drawing = false;
     }
 
-}
+    // returns the neighbouring tiles that have the same number as the provided tile
+    findNeighboursForTile(tile) {
+        let neighbours = [];
+
+        let left = tile.c > 0 ? this.getTileAt(tile.c - 1, tile.r) : null;
+        let top = tile.r > 0 ? this.getTileAt(tile.c, tile.r - 1) : null;
+        let right = tile.c < BOARD_WIDTH-1 ? this.getTileAt(tile.c + 1, tile.r) : null;
+        let bottom = tile.r < BOARD_HEIGHT-1 ? this.getTileAt(tile.c, tile.r + 1) : null;
+
+        if (null != left && left.number === tile.number) neighbours.push(left);
+        if (null != top && top.number === tile.number) neighbours.push(top);
+        if (null != right && right.number === tile.number) neighbours.push(right);
+        if (null != bottom && bottom.number === tile.number) neighbours.push(bottom);
+
+        return neighbours;
+    }
+
+    getTileAt(column, row) {
+        let tile = this.board.find((t) => t.c === column && t.r === row);
+        return !!tile ? tile : null;
+    }
+
+    // Returns a list of all tiles that share the same number as the one provided
+    // and that are continously connected throughout each other.
+    // Important: board borders are cut off points!
+    gatherConnectedTiles(tile) {
+
+        // A list of array indices that are connected to the tile
+        // and furthermore to other tiles with the same value/number.
+        let connected = []; 
+
+        // Searches through all neighbours to find all connected tiles.
+        let crawl = (rootTile, crawled, ignoreRoot) => {
+            if (rootTile === null) {
+                console.warn("rootTile not set");
+                return null;
+            }
+
+            let num = rootTile.number;
+            crawled.push(rootTile);
+
+            let neighbours = this.findNeighboursForTile(rootTile),
+                counted = neighbours.length;
+
+            for (let i = 0; i < counted; i++) {
+                let t = neighbours[i],
+                    idxOf = crawled.indexOf(t);
+                if (idxOf === -1) {
+                    crawl(t, crawled);
+                }
+            }
+        }.bind(this);
+
+        crawl(tile, connected, true);
+        // we don't want to have our initial tile in the result set
+        return connected.filter((t) => !(t.r === tile.r && t.c === tile.c));
+    }
+    
+} // class Game
