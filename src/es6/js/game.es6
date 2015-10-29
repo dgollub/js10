@@ -55,7 +55,7 @@ const MAGIC_COLORS_REVERSE = (() => {
     return [...MAGIC_COLORS].reverse();
 })();
 
-const MOVE_STEPS_IN_FRAMES = 30;
+const MOVE_STEPS_IN_FRAMES = 30;  // or in 0.5 seconds, assuming 60 frames/sec
 
 // console.log(MAGIC_COLORS);
 
@@ -67,6 +67,8 @@ class Tile {
         this.c = c;
         this.r = r;
         this.moveTo = false;
+        this.currentPosition = false;
+        this.velocity = 4; // random number, hidden xkcd reference
         this.stepsMoved = 0;
         this.destroy = false;
         this.tracked = false;
@@ -76,6 +78,8 @@ class Tile {
     draw(ctx, sw, sh) {
         // TODO(dkg): randomize color according to this.number
         // TODO(dkg): implement tile destruction and adding new tiles from above
+        //            Would be cool if the tile would explode in huge explosion
+        //            but only if the number is 9 and it would become a 10.
         if (this.destroy === true) {
             return;
         }
@@ -83,34 +87,58 @@ class Tile {
         let [w, h] = this.tileDimensions(sw, sh);
         // these are the original pixel coords - they need to be adjusted
         // when we have to collapse
-        let [l, t] = [-1, -1]; 
+        let [l, t] = this.canvasCoordinates(sw, sh);
         
         if (this.moveTo !== false) {
-            this.stepsMoved++
-            if (this.stepsMoved <= MOVE_STEPS_IN_FRAMES) {
-                // TODO(dkg): rethink this approach - it is not working at all right now.
-                // We start at c0, r0 and want to go to cN, rM
-                // with (cN != c0 and rM != r0) in a constant
-                // number of steps (MOVE_STEPS_IN_FRAMES).
-                // This is pixel wise, not column/row wise.
-                let [l, t] = this.canvasCoordinates(sw, sh);
-                let [ml, mt] = this.moveTo.canvasCoordinates(sw, sh); 
-                // distance between start tile and end tile in pixel
-                let [dl, dt] = [ml - l, mt - t];
-                let [deltaWidthInPixel, deltaHeightInPixel] = [dl / MOVE_STEPS_IN_FRAMES, dt / MOVE_STEPS_IN_FRAMES];
-                let [totalDWIP, totalDHIP] = [deltaWidthInPixel * this.stepsMoved, deltaHeightInPixel * this.stepsMoved];
-                let [targetLeft, targetTop] = [l + totalDWIP, t + totalDHIP];
-                [l, t] = [Math.ceil(targetLeft), Math.ceil(targetTop)];
-            } else {
-                [this.c, this.r] = [this.moveTo.c, this.moveTo.r];
-                [l, t] = this.moveTo.canvasCoordinates(sw, sh); 
+            // TODO(dkg): Check if we are already in the correct spot and
+            //            if we are, just mark us as destroyed.
+
+            //    stepsMoved is important, as we want to keep track how far
+            //    we are into the animation cycle for this move, even when the 
+            //    user changes the size of the window and therefore the canvas dimensions
+            let step = ++this.stepsMoved;
+
+            // Here is the general animation idea:
+            // -  the velocity should probably adjusted so that all tiles
+            //    arrive at the same time regardless of distance
+            // -  each frame, move the source closer to the target
+            // -  the number of steps for each frame shall be calculated
+            //    as follows: magic
+            //
+            //    general rule: the whole animation for the move should
+            //                  not take longer than N milliseconds (or M frames)
+            //    we need the fraction of how far we are in the right directions
+            //    from there we can calc the pixel position
+
+            let [dr, dc] = [this.r - this.moveTo.r, this.c - this.moveTo.c];
+            let [tl, tt] = this.moveTo.canvasCoordinates(sw, sh); // hmm, this seems inefficient if we 
+                                                                  // do this for every time for each tile
+                                                                  // that needs to move to this position.
+                                                                  // maybe we could pull this into the
+                                                                  // calling function instead and pass
+                                                                  // it through?
+            // TODO(dkg): this commented version has the right idea
+            //            the pieces move into the right direction, however
+            //            they move too far too fast so I think the 
+            //            actual distance calculation is off by quite a bit - fix that
+            // let fraction = (step / MOVE_STEPS_IN_FRAMES);
+            // console.log("fraction", fraction);
+
+            // let [fl, ft] = [ dc > 0 ? -fraction * l : fraction * l, dr > 0 ? -fraction * t : fraction * t ]; 
+            // [l, t] = [ dc == 0 ? l : l + fl, dr == 0 ? t : t + ft];
+            let fraction = (step / MOVE_STEPS_IN_FRAMES);
+
+            // this code is not working
+            let [fl, ft] = [ fraction * dc, fraction * dr ]; 
+
+            [l, t] = [ tl - fl * l, tt - ft * t ];
+            // this code is working
+            if (step >= MOVE_STEPS_IN_FRAMES) {
+                this.destroy = true;
                 this.stepsMoved = 0;
                 this.moveTo = false;
-                this.destroy = true;
             }
-        } else {
-            [l, t] = this.canvasCoordinates(sw, sh);
-        }
+        } 
 
         let fillColor = MAGIC_COLORS[this.number-1];
         let antiColor = isDarkColor(fillColor) ? "lightgray" : "black";
@@ -308,6 +336,9 @@ export default class Game {
         // filled up again - let these drop from the top as well.
 
         let connectedTiles = this.gatherConnectedTiles(clickedOnTile);
+        // TODO(dkg): for debugging purposes display a overlay or 
+        //            different border color for all connected tiles
+        //            as a whole, not for each individual one
         connectedTiles.forEach((tile) => {
             // animate to collapse onto clicked tile
             // remove tiles after animation
