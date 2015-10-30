@@ -89,54 +89,38 @@ class Tile {
         // when we have to collapse
         let [l, t] = this.canvasCoordinates(sw, sh);
         
-        if (this.moveTo !== false) {
+        if (this.moveTo) {
             // TODO(dkg): Check if we are already in the correct spot and
             //            if we are, just mark us as destroyed.
 
-            //    stepsMoved is important, as we want to keep track how far
-            //    we are into the animation cycle for this move, even when the 
-            //    user changes the size of the window and therefore the canvas dimensions
+            // NOTE(dkg): animation idea - have the tiles shrink and disappear instead maybe?
+
+            // TODO(dkg): figure out how to add velocity into the code below
+
+            // stepsMoved is important, as we want to keep track how far
+            // we are into the animation cycle for this move, even when the 
+            // user changes the size of the window and therefore the canvas dimensions
             let step = ++this.stepsMoved;
 
-            // Here is the general animation idea:
-            // -  the velocity should probably adjusted so that all tiles
-            //    arrive at the same time regardless of distance
-            // -  each frame, move the source closer to the target
-            // -  the number of steps for each frame shall be calculated
-            //    as follows: magic
-            //
-            //    general rule: the whole animation for the move should
-            //                  not take longer than N milliseconds (or M frames)
-            //    we need the fraction of how far we are in the right directions
-            //    from there we can calc the pixel position
-
             let [dr, dc] = [this.r - this.moveTo.r, this.c - this.moveTo.c];
-            let [tl, tt] = this.moveTo.canvasCoordinates(sw, sh); // hmm, this seems inefficient if we 
-                                                                  // do this for every time for each tile
-                                                                  // that needs to move to this position.
-                                                                  // maybe we could pull this into the
-                                                                  // calling function instead and pass
-                                                                  // it through?
-            // TODO(dkg): this commented version has the right idea
-            //            the pieces move into the right direction, however
-            //            they move too far too fast so I think the 
-            //            actual distance calculation is off by quite a bit - fix that
-            // let fraction = (step / MOVE_STEPS_IN_FRAMES);
-            // console.log("fraction", fraction);
+            let [dsr, dsc] = [dr / MOVE_STEPS_IN_FRAMES, dc / MOVE_STEPS_IN_FRAMES];
+            // The -dsr and -dsc are here in order to have the tiles move onto the target one, not move
+            // away from it.
+            let [stepsFractionRows, stepsFractionColumns] = [ step * -dsr, step * -dsc ]; 
+            let [moveRowsInPixel, moveColsInPixel] = [h * stepsFractionRows, w * stepsFractionColumns];
+            let [nl, nt] = [l + moveColsInPixel, t + moveRowsInPixel];
 
-            // let [fl, ft] = [ dc > 0 ? -fraction * l : fraction * l, dr > 0 ? -fraction * t : fraction * t ]; 
-            // [l, t] = [ dc == 0 ? l : l + fl, dr == 0 ? t : t + ft];
-            let fraction = (step / MOVE_STEPS_IN_FRAMES);
+            [l, t] = [nl, nt];
 
-            // this code is not working
-            let [fl, ft] = [ fraction * dc, fraction * dr ]; 
-
-            [l, t] = [ tl - fl * l, tt - ft * t ];
             // this code is working
+            // TODO(dkg): add check for "is the tile already on the position where it should be"
             if (step >= MOVE_STEPS_IN_FRAMES) {
                 this.destroy = true;
                 this.stepsMoved = 0;
                 this.moveTo = false;
+                [l, t] = this.moveTo.canvasCoordinates(sw, sh);
+            } else {
+                [l, t] = [nl, nt];
             }
         } 
 
