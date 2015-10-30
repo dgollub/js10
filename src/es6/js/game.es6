@@ -55,7 +55,7 @@ const MAGIC_COLORS_REVERSE = (() => {
     return [...MAGIC_COLORS].reverse();
 })();
 
-const MOVE_STEPS_IN_FRAMES = 30;  // or in 0.5 seconds, assuming 60 frames/sec
+const MOVE_STEPS_IN_FRAMES = 20;  // 30 or in 0.5 seconds, assuming 60 frames/sec
 
 // console.log(MAGIC_COLORS);
 
@@ -115,10 +115,13 @@ class Tile {
             // this code is working
             // TODO(dkg): add check for "is the tile already on the position where it should be"
             if (step >= MOVE_STEPS_IN_FRAMES) {
+
+                [l, t] = this.moveTo.canvasCoordinates(sw, sh);
+
                 this.destroy = true;
                 this.stepsMoved = 0;
                 this.moveTo = false;
-                [l, t] = this.moveTo.canvasCoordinates(sw, sh);
+
             } else {
                 [l, t] = [nl, nt];
             }
@@ -266,6 +269,10 @@ export default class Game {
 
             this.board.forEach((tile) => {
                 tile.tracked = false;
+
+                if (tile.destroy) {
+                    return;
+                }
 
                 // the mousePos is in pixel coords
                 let [sw, sh] = dims;
