@@ -1,2 +1,4 @@
 
-TODO: implement the game in this language
+An implementation in ES6, with SASS for CSS styling.
+
+Also, canvas element is used instead of individual div elements.
