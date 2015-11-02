@@ -13,10 +13,10 @@ game.play();
 
 $("#buttonRestart").on("click", (ev) => {
 
-	console.info("===> RESTART GAME");
+    console.info("===> RESTART GAME");
 
-	game = new Game();
-	game.play();
+    game = new Game();
+    game.play();
 
 });
 

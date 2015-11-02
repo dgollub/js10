@@ -55,7 +55,7 @@ const MAGIC_COLORS_REVERSE = (() => {
     return [...MAGIC_COLORS].reverse();
 })();
 
-const MOVE_STEPS_IN_FRAMES = 20;  // 30 or in 0.5 seconds, assuming 60 frames/sec
+const MOVE_STEPS_IN_FRAMES = 30;  // 30 or in 0.5 seconds, assuming 60 frames/sec
 
 // console.log(MAGIC_COLORS);
 
@@ -70,8 +70,11 @@ class Tile {
         this.currentPosition = false;
         this.velocity = 4; // random number, hidden xkcd reference
         this.stepsMoved = 0;
+        this.moveInFrames = 0;
         this.destroy = false;
         this.tracked = false;
+        this.increaseNumber = false;
+        this.isCollapse = false;
     }
 
     // called once per frame - only once per frame!
@@ -81,6 +84,9 @@ class Tile {
         //            Would be cool if the tile would explode in huge explosion
         //            but only if the number is 9 and it would become a 10.
         if (this.destroy === true) {
+            return;
+        }
+        if (this.number <= -1) {
             return;
         }
 
@@ -102,28 +108,30 @@ class Tile {
             // user changes the size of the window and therefore the canvas dimensions
             let step = ++this.stepsMoved;
 
-            let [dr, dc] = [this.r - this.moveTo.r, this.c - this.moveTo.c];
+            let [dr, dc] = [this.moveTo.r - this.r, this.moveTo.c - this.c];
             let [dsr, dsc] = [dr / MOVE_STEPS_IN_FRAMES, dc / MOVE_STEPS_IN_FRAMES];
-            // The -dsr and -dsc are here in order to have the tiles move onto the target one, not move
-            // away from it.
-            let [stepsFractionRows, stepsFractionColumns] = [ step * -dsr, step * -dsc ]; 
+            let [stepsFractionRows, stepsFractionColumns] = [ step * dsr, step * dsc ]; 
             let [moveRowsInPixel, moveColsInPixel] = [h * stepsFractionRows, w * stepsFractionColumns];
-            let [nl, nt] = [l + moveColsInPixel, t + moveRowsInPixel];
 
-            [l, t] = [nl, nt];
+            [l, t] = [l + moveColsInPixel, t + moveRowsInPixel];
 
             // this code is working
             // TODO(dkg): add check for "is the tile already on the position where it should be"
-            if (step >= MOVE_STEPS_IN_FRAMES) {
+            if (step >= this.moveInFrames) {
 
                 [l, t] = this.moveTo.canvasCoordinates(sw, sh);
 
-                this.destroy = true;
+                this.r = this.moveTo.r;
+                this.c = this.moveTo.c;
+                
+                if (this.isCollapse) {
+                    this.moveTo.increaseNumber = true;
+                    this.destroy = true;
+                    this.isCollapse = false;
+                }
+
                 this.stepsMoved = 0;
                 this.moveTo = false;
-
-            } else {
-                [l, t] = [nl, nt];
             }
         } 
 
@@ -131,7 +139,6 @@ class Tile {
         let antiColor = isDarkColor(fillColor) ? "lightgray" : "black";
 
         ctx.lineWidth = 1;
-        // ctx.fillStyle = (this.c + this.r) % 2 != 0 ? "#FF4500" : "#FFA500";
         ctx.fillStyle = fillColor;
         ctx.fillRect(l, t, w, h);
 
@@ -156,9 +163,18 @@ class Tile {
         ctx.fillText(this.number, x, y);
     }
 
+    fallDownTo(targetTile) {
+        this.moveTo = targetTile;
+        this.stepsMoved = 0;
+        this.moveInFrames = MOVE_STEPS_IN_FRAMES / 3;
+        this.isCollapse = false;
+    }
+
     animateCollapseTo(targetTile) {
         this.moveTo = targetTile;
         this.stepsMoved = 0;
+        this.moveInFrames = MOVE_STEPS_IN_FRAMES / 4;
+        this.isCollapse = true;
     }
 
     canvasCoordinates(sw, sh) {
@@ -175,6 +191,12 @@ class Tile {
             this.c * tw,
             this.r * th
         ];
+
+        // we were added at the top after other tiles fell down
+        // so let's come in gently from the top
+        if (this.r == -1) {
+            t = th / 5.0;
+        }
 
         return [l, t];
     }
@@ -198,10 +220,7 @@ export default class Game {
         let tiles = (() => {
             let tiles = [];
             for (let counter = 0; counter < BOARD_TILES_COUNT; counter++) {
-                // let [columns, rows] = [
-                    // parseFloat(BOARD_TILES_COUNT / BOARD_WIDTH),
-                    // parseFloat(BOARD_TILES_COUNT / BOARD_HEIGHT)
-                // ];
+
                 let [column, row] = [
                     parseInt(counter % BOARD_WIDTH, 10),              // position in column
                     parseInt(Math.floor(counter / BOARD_HEIGHT), 10), // position in row
@@ -238,7 +257,6 @@ export default class Game {
             let event = ev || window.event; // IE-ism
             // If pageX/Y aren't available and clientX/Y are,
             // calculate pageX/Y - logic taken from jQuery.
-            // (This is to support old IE)
             if (event.pageX == null && event.clientX != null) {
                 let eventDoc = (event.target && event.target.ownerDocument) || document,
                     doc = eventDoc.documentElement,
@@ -340,10 +358,57 @@ export default class Game {
     }
 
     play() {
-        this.draw();
         // TODO(dkg): remove destroyed tiles and add new tiles from above the board
         //            with gravity pulling them down etc.
         //            only let the player continue to play after all animations are done
+        let removed = 0;
+        // if we have any destroyed tiles, remove them from the array
+        // also increase any numbers if we need to
+        for (let idx = this.board.length-1; idx--;) {
+            let tile = this.board[idx];
+            if (tile.destroy === true) {
+                this.board.splice(idx, 1);
+                removed++;
+                continue;
+            }
+            // the user clicked on this tile, it was connected to others of
+            // the same kind so we need to increase the number
+            if (tile.increaseNumber === true) {
+                tile.number++;
+                tile.increaseNumber = false;
+            }
+            // we are still animating
+            if (tile.stepsMoved > 0) {
+                continue;
+            }
+            // check if we need to apply gravity to this tile
+            // check if we are at the bottom row
+            if (tile.r >= BOARD_HEIGHT - 1) 
+                continue;
+            // check if we have "air" underneath us, then we can apply gravity and
+            // fall down one spot
+            // FIXME(dkg): Sometimes the tile above doesn't fall down.
+            //             I feel that the check for 'is position empty and can I fall down'
+            //             has some slight edge cases that causes this. Investigate!
+            let tileUnderUs = this.getTileAt(tile.c, tile.r + 1);
+            if (null == tileUnderUs) {
+                // console.log("apply gravity now", tile);
+                tile.fallDownTo(new Tile({number: -1, r: tile.r + 1, c: tile.c}));
+            } // else {} // there is a tile under us, so we can't fall down now
+        }
+
+        // re-add elements at top
+        for (let col = 0; col < BOARD_WIDTH - 1; col++) {
+            let tile = this.getTileAt(col, 0);
+            if (null == tile) {
+                // TODO(dkg): figure out why this doesn't work - the gravity
+                //            is not applied in the next frame ...
+                this.board.push(new Tile({number: getRandomInt(6, 9), r: 0, c: col}));
+            }
+        }
+
+        this.draw();
+
         window.requestAnimationFrame(this.play.bind(this));
     }
 
