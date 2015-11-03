@@ -116,7 +116,6 @@ class Tile {
 
             [l, t] = [l + moveColsInPixel, t + moveRowsInPixel];
 
-            // this code is working
             // TODO(dkg): add check for "is the tile already on the position where it should be"
             if (step >= this.moveInFrames) {
 
@@ -419,7 +418,7 @@ export default class Game {
                 blockInput = true;
                 // TODO(dkg): figure out why this doesn't work - the gravity
                 //            is not applied in the next frame ...
-                this.board.push(new Tile({number: getRandomInt(6, 9), r: 0, c: col}));
+                this.board.push(new Tile({number: 0, r: 0, c: col}));
             }
         }
 
