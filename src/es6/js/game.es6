@@ -75,6 +75,7 @@ class Tile {
         this.tracked = false;
         this.increaseNumber = false;
         this.isCollapse = false;
+        this.connectedCount = 0;
     }
 
     // called once per frame - only once per frame!
@@ -216,7 +217,10 @@ class Tile {
 export default class Game {
 
     constructor() {
-
+        this.blockInput = false;
+        this.points = 0;
+        $("#points").html(`No points :-(`);
+        
         let tiles = (() => {
             let tiles = [];
             for (let counter = 0; counter < BOARD_TILES_COUNT; counter++) {
@@ -309,6 +313,11 @@ export default class Game {
 
         let mouseClick = (ev) => {
             ev.preventDefault();
+            
+            if (this.blockInput) {
+                console.log("input blocked");
+                return;
+            }
 
             // if (this.drawing !== true) {
                 // console.log("Ignored mouse click because I was drawing.");
@@ -345,6 +354,7 @@ export default class Game {
         // filled up again - let these drop from the top as well.
 
         let connectedTiles = this.gatherConnectedTiles(clickedOnTile);
+        clickedOnTile.connectedCount = connectedTiles.length;
         // TODO(dkg): for debugging purposes display a overlay or 
         //            different border color for all connected tiles
         //            as a whole, not for each individual one
@@ -358,6 +368,7 @@ export default class Game {
     }
 
     play() {
+        let blockInput = false;
         // TODO(dkg): remove destroyed tiles and add new tiles from above the board
         //            with gravity pulling them down etc.
         //            only let the player continue to play after all animations are done
@@ -374,11 +385,14 @@ export default class Game {
             // the user clicked on this tile, it was connected to others of
             // the same kind so we need to increase the number
             if (tile.increaseNumber === true) {
+                this.points += Math.ceil(Math.sqrt(((tile.connectedCount + 1)**2) * (tile.number**2)));
                 tile.number++;
                 tile.increaseNumber = false;
+                $("#points").html(`Points: ${this.points}`);
             }
             // we are still animating
             if (tile.stepsMoved > 0) {
+                blockInput = true;
                 continue;
             }
             // check if we need to apply gravity to this tile
@@ -394,6 +408,7 @@ export default class Game {
             if (null == tileUnderUs) {
                 // console.log("apply gravity now", tile);
                 tile.fallDownTo(new Tile({number: -1, r: tile.r + 1, c: tile.c}));
+                blockInput = true;
             } // else {} // there is a tile under us, so we can't fall down now
         }
 
@@ -401,12 +416,14 @@ export default class Game {
         for (let col = 0; col < BOARD_WIDTH - 1; col++) {
             let tile = this.getTileAt(col, 0);
             if (null == tile) {
+                blockInput = true;
                 // TODO(dkg): figure out why this doesn't work - the gravity
                 //            is not applied in the next frame ...
                 this.board.push(new Tile({number: getRandomInt(6, 9), r: 0, c: col}));
             }
         }
 
+        this.blockInput = blockInput;
         this.draw();
 
         window.requestAnimationFrame(this.play.bind(this));
