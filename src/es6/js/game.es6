@@ -166,14 +166,14 @@ class Tile {
     fallDownTo(targetTile) {
         this.moveTo = targetTile;
         this.stepsMoved = 0;
-        this.moveInFrames = MOVE_STEPS_IN_FRAMES / 3;
+        this.moveInFrames = MOVE_STEPS_IN_FRAMES / 2;
         this.isCollapse = false;
     }
 
     animateCollapseTo(targetTile) {
         this.moveTo = targetTile;
         this.stepsMoved = 0;
-        this.moveInFrames = MOVE_STEPS_IN_FRAMES / 4;
+        this.moveInFrames = MOVE_STEPS_IN_FRAMES;
         this.isCollapse = true;
     }
 

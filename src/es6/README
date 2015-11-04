@@ -2,3 +2,6 @@
 An implementation in ES6, with SASS for CSS styling.
 
 Also, canvas element is used instead of individual div elements.
+
+The implementations are not bug-free, but at this point I don't want to dive deeper to fix those as I want to concentrate on other, more fun projects. If you want to, feel free to fix the bugs and send a pull request.
+
